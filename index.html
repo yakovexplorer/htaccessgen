@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>.htaccess Generator</title>
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f8f9fa;
+            font-family: Arial, sans-serif;
+        }
+        .container {
+            max-width: 600px;
+            margin: auto;
+            padding: 20px;
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-top: 50px;
+        }
+        .title {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        .btn-generate {
+            margin-top: 20px;
+            width: 100%;
+        }
+        .btn-download {
+            width: 100%;
+        }
+        .output {
+            margin-top: 40px;
+            padding: 20px;
+            background-color: #f0f0f0;
+            border-radius: 8px;
+            white-space: pre-line;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="title">.htaccess Generator</h1>
+        <form id="htaccessForm">
+            <div class="form-group">
+                <label>Force HTTPS</label>
+                <input type="checkbox" id="forceHttpsCheckbox">
+            </div>
+            <div class="form-group">
+                <label>Force WWW</label>
+                <input type="checkbox" id="forceWwwCheckbox">
+            </div>
+            <div class="form-group">
+                <label>Redirect To:</label>
+                <input type="text" class="form-control" id="redirectToInput" placeholder="Enter URL to redirect to">
+            </div>
+            <div class="form-group">
+                <label>Error Document HTTP Code</label>
+                <input type="text" class="form-control" id="errorCodeInput" placeholder="Enter HTTP code">
+                <select class="form-control mt-2" id="errorTypeSelect">
+                    <option value="text">Text</option>
+                    <option value="redirect">Redirect</option>
+                    <option value="file">File</option>
+                </select>
+                <input type="text" class="form-control mt-2" id="errorRedirectInput" placeholder="Enter URL to redirect to" style="display:none;">
+                <input type="text" class="form-control mt-2" id="errorFileInput" placeholder="Enter file path" style="display:none;">
+                <input type="text" class="form-control mt-2" id="errorTextInput" placeholder="Enter text for error document">
+            </div>
+            <button type="button" class="btn btn-primary btn-generate" id="generateBtn">Generate .htaccess</button>
+            <a href="#" class="btn btn-primary btn-download mt-2" id="downloadBtn">Download .htaccess</a>
+        </form>
+        <div class="output" id="htaccessOutput"></div>
+    </div>
+
+    <script>
+        document.getElementById('generateBtn').addEventListener('click', function() {
+            var htaccessContent = '';
+
+            if (document.getElementById('forceHttpsCheckbox').checked) {
+                htaccessContent += '# Force HTTPS\n';
+                htaccessContent += 'RewriteEngine On\n';
+                htaccessContent += 'RewriteCond %{HTTPS} off\n';
+                htaccessContent += 'RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]\n\n';
+            }
+
+            if (document.getElementById('forceWwwCheckbox').checked) {
+                htaccessContent += '# Force WWW\n';
+                htaccessContent += 'RewriteEngine On\n';
+                htaccessContent += 'RewriteCond %{HTTP_HOST} !^www\\. [NC]\n';
+                htaccessContent += 'RewriteRule ^ https://www.%{HTTP_HOST}%{REQUEST_URI} [L,R=301]\n\n';
+            }
+
+            var redirectTo = document.getElementById('redirectToInput').value.trim();
+            if (redirectTo !== '') {
+                htaccessContent += '# Redirect to ' + redirectTo + '\n';
+                htaccessContent += 'Redirect 301 / ' + redirectTo + '\n\n';
+            }
+
+            var errorCode = document.getElementById('errorCodeInput').value.trim();
+            var errorType = document.getElementById('errorTypeSelect').value;
+            var errorValue = '';
+
+            if (errorType === 'redirect') {
+                errorValue = document.getElementById('errorRedirectInput').value.trim();
+                htaccessContent += 'ErrorDocument ' + errorCode + ' ' + errorValue + '\n\n';
+            } else if (errorType === 'file') {
+                errorValue = document.getElementById('errorFileInput').value.trim();
+                htaccessContent += 'ErrorDocument ' + errorCode + ' ' + errorValue + '\n\n';
+            } else {
+                errorValue = document.getElementById('errorTextInput').value.trim();
+                htaccessContent += 'ErrorDocument ' + errorCode + ' "' + errorValue + '"\n\n';
+            }
+
+            document.getElementById('htaccessOutput').innerText = '# .htaccess file\n\n' + htaccessContent;
+        });
+
+        document.getElementById('downloadBtn').addEventListener('click', function() {
+            var htaccessContent = document.getElementById('htaccessOutput').innerText;
+            var blob = new Blob([htaccessContent], {type: 'text/plain'});
+            var url = window.URL.createObjectURL(blob);
+            var a = document.createElement('a');
+            a.href = url;
+            a.download = 'htaccess.txt';
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+        });
+
+        document.getElementById('errorTypeSelect').addEventListener('change', function() {
+            var errorType = this.value;
+            if (errorType === 'redirect') {
+                document.getElementById('errorRedirectInput').style.display = 'block';
+                document.getElementById('errorFileInput').style.display = 'none';
+                document.getElementById('errorTextInput').style.display = 'none';
+            } else if (errorType === 'file') {
+                document.getElementById('errorRedirectInput').style.display = 'none';
+                document.getElementById('errorFileInput').style.display = 'block';
+                document.getElementById('errorTextInput').style.display = 'none';
+            } else {
+                document.getElementById('errorRedirectInput').style.display = 'none';
+                document.getElementById('errorFileInput').style.display = 'none';
+                document.getElementById('errorTextInput').style.display = 'block';
+            }
+        });
+
+        document.getElementById('errorTextInput').style.display = 'block';
+    </script>
+</body>
+</html>
