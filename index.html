@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>.htaccess Generator</title>
     <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.3.1/styles/default.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.3.1/highlight.min.js"></script>
     <style>
         body {
             background-color: #f8f9fa;
@@ -55,21 +57,31 @@
                 <input type="checkbox" id="forceWwwCheckbox">
             </div>
             <div class="form-group">
+                <label>Turn off indexing</label>
+                <input type="checkbox" id="turnOffIndexingCheckbox">
+            </div>
+            <div class="form-group">
                 <label>Redirect To:</label>
                 <input type="text" class="form-control" id="redirectToInput" placeholder="Enter URL to redirect to">
             </div>
-            <div class="form-group">
-                <label>Error Document HTTP Code</label>
-                <input type="text" class="form-control" id="errorCodeInput" placeholder="Enter HTTP code">
-                <select class="form-control mt-2" id="errorTypeSelect">
-                    <option value="text">Text</option>
-                    <option value="redirect">Redirect</option>
-                    <option value="file">File</option>
-                </select>
-                <input type="text" class="form-control mt-2" id="errorRedirectInput" placeholder="Enter URL to redirect to" style="display:none;">
-                <input type="text" class="form-control mt-2" id="errorFileInput" placeholder="Enter file path" style="display:none;">
-                <input type="text" class="form-control mt-2" id="errorTextInput" placeholder="Enter text for error document">
+            <div class="error-documents">
+                <div class="error-document">
+                    <div class="form-group">
+                        <label>Error Document HTTP Code</label>
+                        <input type="text" class="form-control errorCodeInput" placeholder="Enter HTTP code">
+                        <select class="form-control mt-2 errorTypeSelect">
+                            <option value="text">Text</option>
+                            <option value="redirect">Redirect</option>
+                            <option value="file">File</option>
+                        </select>
+                        <input type="text" class="form-control mt-2 errorRedirectInput" placeholder="Enter URL to redirect to" style="display:none;">
+                        <input type="text" class="form-control mt-2 errorFileInput" placeholder="Enter file path" style="display:none;">
+                        <input type="text" class="form-control mt-2 errorTextInput" placeholder="Enter text for error document">
+                    </div>
+                </div>
             </div>
+            <button type="button" class="btn btn-primary btn-add-error">Add Error Document</button>
+            <button type="button" class="btn btn-danger btn-remove-error">Remove Last Error Document</button>
             <button type="button" class="btn btn-primary btn-generate" id="generateBtn">Generate .htaccess</button>
             <a href="#" class="btn btn-primary btn-download mt-2" id="downloadBtn">Download .htaccess</a>
         </form>
@@ -94,28 +106,43 @@
                 htaccessContent += 'RewriteRule ^ https://www.%{HTTP_HOST}%{REQUEST_URI} [L,R=301]\n\n';
             }
 
+            if (document.getElementById('turnOffIndexingCheckbox').checked) {
+                htaccessContent += '# Turn off indexing\n';
+                htaccessContent += 'Options -Indexes\n\n';
+            }
+
             var redirectTo = document.getElementById('redirectToInput').value.trim();
             if (redirectTo !== '') {
                 htaccessContent += '# Redirect to ' + redirectTo + '\n';
                 htaccessContent += 'Redirect 301 / ' + redirectTo + '\n\n';
             }
 
-            var errorCode = document.getElementById('errorCodeInput').value.trim();
-            var errorType = document.getElementById('errorTypeSelect').value;
-            var errorValue = '';
+            var errorDocuments = document.querySelectorAll('.error-document');
+            errorDocuments.forEach(function(errorDocument) {
+                var errorCode = errorDocument.querySelector('.errorCodeInput').value.trim();
+                var errorType = errorDocument.querySelector('.errorTypeSelect').value;
+                var errorValue = '';
 
-            if (errorType === 'redirect') {
-                errorValue = document.getElementById('errorRedirectInput').value.trim();
-                htaccessContent += 'ErrorDocument ' + errorCode + ' ' + errorValue + '\n\n';
-            } else if (errorType === 'file') {
-                errorValue = document.getElementById('errorFileInput').value.trim();
-                htaccessContent += 'ErrorDocument ' + errorCode + ' ' + errorValue + '\n\n';
-            } else {
-                errorValue = document.getElementById('errorTextInput').value.trim();
-                htaccessContent += 'ErrorDocument ' + errorCode + ' "' + errorValue + '"\n\n';
-            }
+                if (errorType === 'redirect') {
+                    errorValue = errorDocument.querySelector('.errorRedirectInput').value.trim();
+                    if (errorCode !== '' && errorValue !== '') {
+                        htaccessContent += 'ErrorDocument ' + errorCode + ' ' + errorValue + '\n\n';
+                    }
+                } else if (errorType === 'file') {
+                    errorValue = errorDocument.querySelector('.errorFileInput').value.trim();
+                    if (errorCode !== '' && errorValue !== '') {
+                        htaccessContent += 'ErrorDocument ' + errorCode + ' ' + errorValue + '\n\n';
+                    }
+                } else {
+                    errorValue = errorDocument.querySelector('.errorTextInput').value.trim();
+                    if (errorCode !== '' && errorValue !== '') {
+                        htaccessContent += 'ErrorDocument ' + errorCode + ' "' + errorValue + '"\n\n';
+                    }
+                }
+            });
 
-            document.getElementById('htaccessOutput').innerText = '# .htaccess file\n\n' + htaccessContent;
+            document.getElementById('htaccessOutput').innerText = htaccessContent;
+            hljs.highlightAll();
         });
 
         document.getElementById('downloadBtn').addEventListener('click', function() {
@@ -129,6 +156,22 @@
             a.click();
             window.URL.revokeObjectURL(url);
             document.body.removeChild(a);
+        });
+
+        document.querySelector('.btn-add-error').addEventListener('click', function() {
+            var errorDocument = document.querySelector('.error-document').cloneNode(true);
+            errorDocument.querySelector('.errorCodeInput').value = '';
+            errorDocument.querySelector('.errorRedirectInput').value = '';
+            errorDocument.querySelector('.errorFileInput').value = '';
+            errorDocument.querySelector('.errorTextInput').value = '';
+            document.querySelector('.error-documents').appendChild(errorDocument);
+        });
+
+        document.querySelector('.btn-remove-error').addEventListener('click', function() {
+            var errorDocuments = document.querySelectorAll('.error-document');
+            if (errorDocuments.length > 1) {
+                errorDocuments[errorDocuments.length - 1].remove();
+            }
         });
 
         document.getElementById('errorTypeSelect').addEventListener('change', function() {
